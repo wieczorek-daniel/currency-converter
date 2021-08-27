@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 from tkinter import ttk
 from ttkbootstrap import Style
@@ -10,7 +11,11 @@ class App(tk.Tk):
         self.geometry("800x400")
         self.resizable(0, 0)
         # Icon made by photo3idea_studio from www.flaticon.com
-        self.iconbitmap("icon.ico")
+        if "nt" == os.name:
+            self.iconbitmap("icons/icon.ico")
+        else:
+            img = tk.PhotoImage(file='icons/icon.png')
+            self.tk.call('wm', 'iconphoto', self._w, img)
         style = Style(theme="flatly")
 
         for index in range(5):
