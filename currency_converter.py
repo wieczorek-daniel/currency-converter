@@ -2,6 +2,33 @@ import os
 import tkinter as tk
 from tkinter import ttk
 from ttkbootstrap import Style
+from bs4 import BeautifulSoup
+import requests
+import re
+
+
+def currencies_web_scraping():
+    page_url = "https://www.nbp.pl/"
+    page = requests.get(page_url)
+    soup = BeautifulSoup(page.content, "html.parser")
+
+    search_text = re.compile(r"Tabela z dnia [0-9]", re.IGNORECASE)
+    found_text = soup.find("div", text=search_text)
+    update_date_regex = re.compile(r"\d{4}-\d{2}-\d{2}", re.IGNORECASE)
+    update_date = update_date_regex.findall(found_text.text)[0]
+
+    # Find the first table tag that follows found_text
+    currencies_table = found_text.findNext("table")
+    currencies_data = []
+    rows = currencies_table.find_all("tr")
+    for tr_number, tr in enumerate(rows):
+        cols = tr.find_all("td")
+        currency_data = []
+        for td_number, td in enumerate(cols):
+            currency_data.append(float(td.text.replace(",", ".")) if "," in td.text else td.text)
+        currencies_data.append(currency_data)
+
+    return currencies_data, update_date
 
 
 class App(tk.Tk):
@@ -14,9 +41,9 @@ class App(tk.Tk):
         if "nt" == os.name:
             self.iconbitmap("icons/icon.ico")
         else:
-            img = tk.PhotoImage(file='icons/icon.png')
-            self.tk.call('wm', 'iconphoto', self._w, img)
-        style = Style(theme="flatly")
+            img = tk.PhotoImage(file="icons/icon.png")
+            self.tk.call("wm", "iconphoto", self._w, img)
+        Style(theme="flatly")
 
         for index in range(5):
             self.columnconfigure(index=index, weight=1)
@@ -28,7 +55,7 @@ class App(tk.Tk):
     def create_widgets(self):
         font_parameters = ("roboto", 16, "bold")
 
-        table_label = tk.Label(text="Table of YYYY-MM-DD", font=font_parameters)
+        table_label = tk.Label(text=f"Table of {currencies_web_scraping()[1]}", font=font_parameters)
         table_label.grid(column=0, row=0, columnspan=5, sticky=tk.N, pady=30)
 
         table = ttk.Treeview(self, column=("currency", "value"), show="headings", height=5)
