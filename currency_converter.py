@@ -28,7 +28,7 @@ def currencies_web_scraping():
             currency_data.append(float(td.text.replace(",", ".")) if "," in td.text else td.text)
         currencies_data.append(currency_data)
 
-    return currencies_data, update_date
+    return update_date, currencies_data
 
 
 class App(tk.Tk):
@@ -55,26 +55,22 @@ class App(tk.Tk):
     def create_widgets(self):
         font_parameters = ("roboto", 16, "bold")
 
-        table_label = tk.Label(text=f"Table of {currencies_web_scraping()[1]}", font=font_parameters)
+        table_label = tk.Label(text=f"Table of {currencies_web_scraping()[0]}", font=font_parameters)
         table_label.grid(column=0, row=0, columnspan=5, sticky=tk.N, pady=30)
 
         table = ttk.Treeview(self, column=("currency", "value"), show="headings", height=5)
         table.column("currency", anchor=tk.CENTER)
         table.heading("currency", text="Currency")
         table.column("value", anchor=tk.CENTER)
-        table.heading("value", text="Value [PLN]")
+        table.heading("value", text="Mid-rate [PLN]")
 
-        # Sample data
-        table.insert("", "end", text="1", values=("1 EUR", "4.58"))
-        table.insert("", "end", text="2", values=("1 USD", "3.89"))
-        table.insert("", "end", text="3", values=("1 CHF", "4.24"))
-        table.insert("", "end", text="4", values=("1 GBP", "5.34"))
-        table.insert("", "end", text="5", values=("100 JPY", "3.53"))
+        currencies_data = currencies_web_scraping()[1]
+        for id, (currency, mid_rate) in enumerate(currencies_data):
+            table.insert("", index=id, values=(currency, mid_rate))
 
         table.grid(column=0, row=0, columnspan=5)
 
-        # Sample currencies
-        currencies = ("PLN", "EUR", "USD", "CHF", "GBP", "JPY")
+        currencies = ["PLN"]+["".join(filter(str.isalpha, currency_data[0])) for currency_data in currencies_data]
 
         from_label = tk.Label(text="From:", font=font_parameters)
         from_label.grid(column=0, row=1, sticky=tk.NW, padx=(25, 0), pady=10)
