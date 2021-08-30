@@ -50,12 +50,13 @@ class App(tk.Tk):
         for index in range(2):
             self.rowconfigure(index=index, weight=2 if index == 0 else 1)
 
-        self.create_widgets()
+        self.from_value, self.from_currency, self.to_value, self.to_currency, self.currencies_data = self.create_widgets()
 
     def create_widgets(self):
         font_parameters = ("roboto", 16, "bold")
 
-        table_label = tk.Label(text=f"Table of {currencies_web_scraping()[0]}", font=font_parameters)
+        currencies_scraper = currencies_web_scraping()
+        table_label = tk.Label(text=f"Table of {currencies_scraper[0]}", font=font_parameters)
         table_label.grid(column=0, row=0, columnspan=5, sticky=tk.N, pady=30)
 
         table = ttk.Treeview(self, column=("currency", "value"), show="headings", height=5)
@@ -64,7 +65,7 @@ class App(tk.Tk):
         table.column("value", anchor=tk.CENTER)
         table.heading("value", text="Mid-rate [PLN]")
 
-        currencies_data = currencies_web_scraping()[1]
+        currencies_data = currencies_scraper[1]
         for id, (currency, mid_rate) in enumerate(currencies_data):
             table.insert("", index=id, values=(currency, mid_rate))
 
@@ -74,7 +75,7 @@ class App(tk.Tk):
 
         from_label = tk.Label(text="From:", font=font_parameters)
         from_label.grid(column=0, row=1, sticky=tk.NW, padx=(25, 0), pady=10)
-        from_value = tk.Entry(width=10, borderwidth=1, font=font_parameters)
+        from_value = tk.Entry(width=10, borderwidth=1, font=font_parameters, justify='center')
         from_value.grid(column=0, row=1, ipady=4)
 
         from_currency = ttk.Combobox(width=5, justify="center", state="readonly", font=font_parameters)
@@ -87,7 +88,7 @@ class App(tk.Tk):
 
         to_label = tk.Label(text="To:", font=font_parameters)
         to_label.grid(column=3, row=1, sticky=tk.NW, padx=(50, 0), pady=10)
-        to_value = tk.Entry(width=10, state="readonly", borderwidth=1, font=font_parameters)
+        to_value = tk.Entry(width=10, borderwidth=1, font=font_parameters, justify='center', state="readonly")
         to_value.grid(column=3, row=1, ipady=4, sticky=tk.E)
 
         to_currency = ttk.Combobox(width=5, justify="center", state="readonly", font=font_parameters)
@@ -95,8 +96,33 @@ class App(tk.Tk):
         to_currency.grid(column=4, row=1)
         to_currency.current(0)
 
+        return from_value, from_currency, to_value, to_currency, currencies_data
+
     def calculate(self):
-        pass
+        self.to_value.config(state="normal")
+        self.to_value.delete(0, tk.END)
+
+        if self.from_currency.get() == self.to_currency.get():
+            final_value = float(self.from_value.get())
+        elif self.from_currency.get() == "PLN":
+            for currency, mid_rate in self.currencies_data:
+                if self.to_currency.get() in currency:
+                    final_value = float(self.from_value.get())/((mid_rate/100) if self.to_currency.get() == "JPY" else mid_rate)
+        elif self.to_currency.get() == "PLN":
+            for currency, mid_rate in self.currencies_data:
+                if self.from_currency.get() in currency:
+                    final_value = float(self.from_value.get())*((mid_rate/100) if self.from_currency.get() == "JPY" else mid_rate)
+        else:
+            from_mid_rate = to_mid_rate = 0
+            for currency, mid_rate in self.currencies_data:
+                if self.from_currency.get() in currency:
+                    from_mid_rate = mid_rate
+                if self.to_currency.get() in currency:
+                    to_mid_rate = mid_rate
+            final_value = (float(self.from_value.get())*((from_mid_rate/100) if self.from_currency.get() == "JPY" else from_mid_rate))/((to_mid_rate/100) if self.to_currency.get() == "JPY" else to_mid_rate)
+
+        self.to_value.insert(0, round(final_value, 2))
+        self.to_value.config(state="disable")
 
 
 if __name__ == "__main__":
