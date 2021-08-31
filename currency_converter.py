@@ -1,6 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
 from ttkbootstrap import Style
 from bs4 import BeautifulSoup
 import requests
@@ -17,7 +18,7 @@ def currencies_web_scraping():
     update_date_regex = re.compile(r"\d{4}-\d{2}-\d{2}", re.IGNORECASE)
     update_date = update_date_regex.findall(found_text.text)[0]
 
-    # Find the first table tag that follows found_text
+    # Find the first <table> tag that follows found_text
     currencies_table = found_text.findNext("table")
     currencies_data = []
     rows = currencies_table.find_all("tr")
@@ -35,8 +36,17 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Currency Converter")
-        self.geometry("800x400")
         self.resizable(0, 0)
+
+        # Window center
+        window_width = 800
+        window_height = 400
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        x_coordinate = int((screen_width/2)-(window_width/2))
+        y_coordinate = int((screen_height/2)-(window_height/2))
+        self.geometry(f"{window_width}x{window_height}+{x_coordinate}+{y_coordinate}")
+
         # Icon made by photo3idea_studio from www.flaticon.com
         if "nt" == os.name:
             self.iconbitmap("icons/icon.ico")
@@ -45,18 +55,21 @@ class App(tk.Tk):
             self.tk.call("wm", "iconphoto", self._w, img)
         Style(theme="flatly")
 
+        # Create grid
         for index in range(5):
             self.columnconfigure(index=index, weight=1)
         for index in range(2):
             self.rowconfigure(index=index, weight=2 if index == 0 else 1)
 
-        self.from_value, self.from_currency, self.to_value, self.to_currency, self.currencies_data = self.create_widgets()
+        self.from_value, self.from_currency, self.to_value, self.to_currency, self.currencies_data = \
+            self.create_widgets()
 
     def create_widgets(self):
         font_parameters = ("roboto", 16, "bold")
 
         currencies_scraper = currencies_web_scraping()
-        table_label = tk.Label(text=f"Table of {currencies_scraper[0]}", font=font_parameters)
+        table_label = tk.Label(text=f"Table of {currencies_scraper[0]}\nData source: National Bank of Poland",
+                               font=font_parameters)
         table_label.grid(column=0, row=0, columnspan=5, sticky=tk.N, pady=30)
 
         table = ttk.Treeview(self, column=("currency", "value"), show="headings", height=5)
@@ -69,12 +82,12 @@ class App(tk.Tk):
         for id, (currency, mid_rate) in enumerate(currencies_data):
             table.insert("", index=id, values=(currency, mid_rate))
 
-        table.grid(column=0, row=0, columnspan=5)
+        table.grid(column=0, row=0, columnspan=5, pady=30)
 
-        currencies = ["PLN"]+["".join(filter(str.isalpha, currency_data[0])) for currency_data in currencies_data]
+        currencies = ["PLN"] + ["".join(filter(str.isalpha, currency_data[0])) for currency_data in currencies_data]
 
         from_label = tk.Label(text="From:", font=font_parameters)
-        from_label.grid(column=0, row=1, sticky=tk.NW, padx=(25, 0), pady=10)
+        from_label.grid(column=0, row=1, sticky=tk.NW, padx=(21, 0))
         from_value = tk.Entry(width=10, borderwidth=1, font=font_parameters, justify='center')
         from_value.grid(column=0, row=1, ipady=4)
 
@@ -87,7 +100,7 @@ class App(tk.Tk):
         calculate_button.grid(column=2, row=1)
 
         to_label = tk.Label(text="To:", font=font_parameters)
-        to_label.grid(column=3, row=1, sticky=tk.NW, padx=(50, 0), pady=10)
+        to_label.grid(column=3, row=1, sticky=tk.NW, padx=(47, 0))
         to_value = tk.Entry(width=10, borderwidth=1, font=font_parameters, justify='center', state="readonly")
         to_value.grid(column=3, row=1, ipady=4, sticky=tk.E)
 
@@ -102,16 +115,31 @@ class App(tk.Tk):
         self.to_value.config(state="normal")
         self.to_value.delete(0, tk.END)
 
+        # Input validation
+        try:
+            float(self.from_value.get())
+        except ValueError:
+            if not self.from_value.get():
+                error_message = "Input value is empty."
+            else:
+                error_message = "Invalid format for input value.\nUse numeric input (examples: 123 or 123.45)"
+            messagebox.showerror(title="Error during calculation", message=error_message)
+            return
+
+        # Calculation
+        final_value = 0
         if self.from_currency.get() == self.to_currency.get():
             final_value = float(self.from_value.get())
         elif self.from_currency.get() == "PLN":
             for currency, mid_rate in self.currencies_data:
                 if self.to_currency.get() in currency:
-                    final_value = float(self.from_value.get())/((mid_rate/100) if self.to_currency.get() == "JPY" else mid_rate)
+                    final_value = float(self.from_value.get()) / (
+                        (mid_rate / 100) if self.to_currency.get() == "JPY" else mid_rate)
         elif self.to_currency.get() == "PLN":
             for currency, mid_rate in self.currencies_data:
                 if self.from_currency.get() in currency:
-                    final_value = float(self.from_value.get())*((mid_rate/100) if self.from_currency.get() == "JPY" else mid_rate)
+                    final_value = float(self.from_value.get()) * (
+                        (mid_rate / 100) if self.from_currency.get() == "JPY" else mid_rate)
         else:
             from_mid_rate = to_mid_rate = 0
             for currency, mid_rate in self.currencies_data:
@@ -119,7 +147,9 @@ class App(tk.Tk):
                     from_mid_rate = mid_rate
                 if self.to_currency.get() in currency:
                     to_mid_rate = mid_rate
-            final_value = (float(self.from_value.get())*((from_mid_rate/100) if self.from_currency.get() == "JPY" else from_mid_rate))/((to_mid_rate/100) if self.to_currency.get() == "JPY" else to_mid_rate)
+            final_value = (float(self.from_value.get()) * (
+                (from_mid_rate / 100) if self.from_currency.get() == "JPY" else from_mid_rate)) / (
+                              (to_mid_rate / 100) if self.to_currency.get() == "JPY" else to_mid_rate)
 
         self.to_value.insert(0, round(final_value, 2))
         self.to_value.config(state="disable")
