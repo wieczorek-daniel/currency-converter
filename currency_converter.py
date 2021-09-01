@@ -6,11 +6,20 @@ from ttkbootstrap import Style
 from bs4 import BeautifulSoup
 import requests
 import re
+import sys
 
 
 def currencies_web_scraping():
     page_url = "https://www.nbp.pl/"
-    page = requests.get(page_url)
+
+    # Connection exception
+    try:
+        page = requests.get(page_url)
+    except requests.exceptions.ConnectionError:
+        error_message = "An error occurred while web scraping data."
+        messagebox.showerror(title="Error during connection", message=error_message)
+        sys.exit()
+
     soup = BeautifulSoup(page.content, "html.parser")
 
     search_text = re.compile(r"Tabela z dnia [0-9]", re.IGNORECASE)
@@ -79,8 +88,8 @@ class App(tk.Tk):
         table.heading("value", text="Mid-rate [PLN]")
 
         currencies_data = currencies_scraper[1]
-        for id, (currency, mid_rate) in enumerate(currencies_data):
-            table.insert("", index=id, values=(currency, mid_rate))
+        for currency_id, (currency, mid_rate) in enumerate(currencies_data):
+            table.insert("", index=currency_id, values=(currency, mid_rate))
 
         table.grid(column=0, row=0, columnspan=5, pady=30)
 
@@ -95,6 +104,7 @@ class App(tk.Tk):
         from_currency["values"] = currencies
         from_currency.grid(column=1, row=1, sticky=tk.W)
         from_currency.current(0)
+        from_currency.bind('<<ComboboxSelected>>', lambda event: from_currency.selection_clear())
 
         calculate_button = tk.Button(text="Calculate", command=self.calculate, font=font_parameters, borderwidth=2)
         calculate_button.grid(column=2, row=1)
@@ -108,6 +118,7 @@ class App(tk.Tk):
         to_currency["values"] = currencies
         to_currency.grid(column=4, row=1)
         to_currency.current(0)
+        to_currency.bind('<<ComboboxSelected>>', lambda event: to_currency.selection_clear())
 
         return from_value, from_currency, to_value, to_currency, currencies_data
 
